@@ -12,19 +12,17 @@ pub fn run() {
     let port: u16 = 1420;
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_localhost::Builder::new(port).build())
         .setup(move |app| {
             let url = format!("http://localhost:{}", port).parse().unwrap();
-            WebviewWindowBuilder::new(
-                app,
-                "main".to_string(),
-                WebviewUrl::External(url)
-            )
-            .title("Wanderers Corp Timers")
-            .always_on_top(true)
-            .decorations(false)
-            .inner_size(800.0, 600.0)
-            .build()?;
+            WebviewWindowBuilder::new(app, "main".to_string(), WebviewUrl::External(url))
+                .title("WCorp: Timers")
+                .always_on_top(true)
+                .decorations(true)
+                .visible(false)
+                .inner_size(450.0, 200.0)
+                .build()?;
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())

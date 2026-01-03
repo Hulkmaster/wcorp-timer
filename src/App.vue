@@ -5,14 +5,13 @@
         <PrmInputText v-model="item.displayName" size="small" style="width: 100px" placeholder="имя" :readonly="!item.edit" :disabled="!item.edit"/>
       </label>
       <div class="flex flex-col" v-if="item.edit">
-        <label class="flex items-center gap-2">
-          <PrmRadioButton v-model="item.type" name="timerType" :value="('seconds' as TTimerType)" />
-          <div>Секунды</div>
-        </label>
-        <label class="flex items-center gap-2">
-          <PrmRadioButton v-model="item.type" name="timerType" :value="('range' as TTimerType)" />
-          <div>Промежуток</div>
-        </label>
+        <PrmSelect
+          :options="timerTypeOptions"
+          v-model="item.type"
+          option-value="id"
+          option-label="displayName"
+          size="small"
+        />
       </div>
       <!--
       <label class="flex items-center gap-2">
@@ -22,41 +21,59 @@
       -->
       <template v-if="item.edit || !item.startedAt">
         <div class="flex flex-col" v-if="item.type === 'range'">
-          <PrmInputNumber :useGrouping="false" v-model="item.valueMin"  placeholder="мин секунды" size="small" :disabled="!item.edit" :input-style="{ width: '60px'}" />
-          <PrmInputNumber :useGrouping="false" v-model="item.valueMax" style="width: 50px" placeholder="макс секунды" size="small" :disabled="!item.edit" :input-style="{ width: '60px'}" />
+          <PrmInputNumber :useGrouping="false" v-model="item.valueMin" style="width: 60px" placeholder="мин" size="small" :disabled="!item.edit" :input-style="{ width: '60px'}" />
+          <PrmInputNumber :useGrouping="false" v-model="item.valueMax" style="width: 60px" placeholder="макс" size="small" :disabled="!item.edit" :input-style="{ width: '60px'}" />
         </div>
         <div v-else-if="item.type === 'seconds'">
           <PrmInputNumber :useGrouping="false" v-model="item.value" placeholder="секунды" size="small" :disabled="!item.edit" :input-style="{ width: '60px'}" />
         </div>
+        <div v-else-if="item.type === 'duration'">
+          <InputDuration
+            v-model="item.value"
+            size="small"
+            style="width: 50px"
+            placeholder="Время"
+            :disabled="!item.edit"
+          />
+        </div>
       </template>
 
       <div v-if="!item.edit && item.startedAt">
-        <template v-if="item.finished">
+        <div v-if="item.finished" style="background-color: red;">
           finished
-        </template>
+        </div>
         <template v-else>
           <PrmInputText
-            v-if="item.type === 'seconds'"
-            :model-value="dayjs.duration(dayjs(item.startedAt).add(item.value, 'seconds').diff(dateNow)).format('mm:ss')"
+            v-if="item.type === 'seconds' || item.type === 'duration'"
+            :model-value="getDurationLeft(item, item.value).format('H:mm:ss')"
             disabled
             readonly
-            style="width: 60px"
             size="small"
+              style="width: 70px"
+            :style="{
+              ...getStyle(item),
+            }"
           />
-          <div class="flex flex-col" v-else>
+          <div class="flex flex-col" v-else-if="item.type === 'range'">
             <PrmInputText
-              :model-value="dayjs.duration(dayjs(item.startedAt).add(item.valueMin, 'seconds').diff(dateNow)).format('mm:ss')"
+              :model-value="getDurationLeft(item, item.valueMin).format('H:mm:ss')"
               disabled
               readonly
-              style="width: 60px"
+              style="width: 70px"
               size="small"
+              :style="{
+                ...getStyle(item),
+              }"
             />
             <PrmInputText
-              :model-value="dayjs.duration(dayjs(item.startedAt).add(item.valueMax, 'seconds').diff(dateNow)).format('mm:ss')"
+              :model-value="getDurationLeft(item, item.valueMax).format('H:mm:ss')"
               disabled
               readonly
-              style="width: 60px"
+              style="width: 70px"
               size="small"
+              :style="{
+                ...getStyle(item),
+              }"
             />
           </div>
         </template>
@@ -77,7 +94,7 @@
         v-if="item.edit"
         @click="item.edit = false"
         icon="pi pi-check"
-          size="small"
+        size="small"
         :disabled="!timerValid(item)"
       />
       <template v-else>
@@ -114,24 +131,26 @@
     </div>
 
     <!-- Footer start -->
-    <div class="flex items-center gap-2">
+    <div class="flex items-end gap-2">
       <PrmButton
+        class="shrink-0"
         @click="addNewItem"
         icon="pi pi-plus"
         iconPos="right"
         size="small"
       />
       <a
+        class="shrink-0"
         href="http://discord.gg/4pAqWvq"
         target="_blank"
       >
         <img
           class="p-button p-button-sm p-button-icon-only"
           src="./assets/wanderers-corp.webp"
-          style="padding: 0; margin: 0; background: transparent; border: lightgrey"
+          style="padding: 0; margin: 0; background: transparent; border-color: orange"
         >
       </a>
-      <div>
+      <div class="shrink-0">
         <PrmButton
           type="button"
           size="small"
@@ -145,6 +164,18 @@
           :popup="true"
         />
       </div>
+      <div class="w-auto">
+        <div>
+          Предупреждение:
+        </div>
+        <PrmSelect v-model="selectedWarningAudio" :options="Object.keys(audioMap)" />
+      </div>
+      <div>
+        <div>
+          Алярма:
+        </div>
+        <PrmSelect v-model="selectedAlarmAudio" :options="Object.keys(audioMap)" />
+      </div>
     </div>
     <!-- Footer end -->
   </div>
@@ -153,19 +184,65 @@
 <script setup lang="ts">
 import PrmButton from "primevue/button";
 import PrmInputNumber from "primevue/inputnumber";
-import PrmRadioButton from "primevue/radiobutton";
-import { onBeforeMount, onMounted, ref, shallowRef, useTemplateRef, watch } from "vue";
+import { CSSProperties, onBeforeMount, onMounted, ref, shallowRef, useTemplateRef, watch } from "vue";
 import dayjs from 'dayjs';
-import duration from 'dayjs/plugin/duration';
+import duration, { Duration } from 'dayjs/plugin/duration';
 import PrmInputText from "primevue/inputtext";
-import { LOCAL_STORAGE_KEY } from "./util/constant";
+import { LOCAL_STORAGE_KEY_AUDIO, LOCAL_STORAGE_KEY_TIMERS } from "./util/constant";
 import { MenuItem } from "primevue/menuitem";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import PrmMenu from "primevue/menu";
+import PrmSelect from "primevue/select";
+
+import Sound1 from "./assets/sounds/ohja.mp3";
+import Sound2 from "./assets/sounds/risok_0.mp3";
+import Sound3 from "./assets/sounds/risok_1.mp3";
+import Sound4 from "./assets/sounds/risok_2.mp3";
+import Sound5 from "./assets/sounds/risok_3.mp3";
+import Sound6 from "./assets/sounds/risok_4.mp3";
+import Sound7 from "./assets/sounds/sakata_1.mp3";
+import Sound8 from "./assets/sounds/vetsalo_4_resolve.mp3";
+import Sound9 from "./assets/sounds/vetsalo_4.mp3";
+import Sound10 from "./assets/sounds/vetsalo_5_resolve.mp3";
+import Sound11 from "./assets/sounds/vetsalo_5.mp3";
+import InputDuration from "./component/input-duration.vue";
 
 dayjs.extend(duration);
 
+type TSoundKey = string;
+// too lazy to do globImport with resolving
+const audioMap: Record<TSoundKey, HTMLAudioElement> = {
+  "ohja": new Audio(Sound1),
+  "risok_0": new Audio(Sound2),
+  "risok_1": new Audio(Sound3),
+  "risok_2": new Audio(Sound4),
+  "risok_3": new Audio(Sound5),
+  "risok_4": new Audio(Sound6),
+  "sakata_1": new Audio(Sound7),
+  "vetsalo_4_resolve": new Audio(Sound8),
+  "vetsalo_4": new Audio(Sound9),
+  "vetsalo_5_resolve": new Audio(Sound10),
+  "vetsalo_5": new Audio(Sound11),
+}
+
 type TTimerType = 'seconds' | 'range' | 'duration';
+const timerTypeOptions: {
+  id: TTimerType,
+  displayName: string,
+}[] = [
+  {
+    id: 'seconds',
+    displayName: 'Секунды',
+  },
+  {
+    id: 'range',
+    displayName: 'Промежуток',
+  },
+  {
+    id: 'duration',
+    displayName: 'Время',
+  },
+];
 interface ITimer {
   id: number,
   displayName: string,
@@ -175,7 +252,7 @@ interface ITimer {
   finished: boolean,
 }
 interface ITimerSeconds extends ITimer {
-  type: 'seconds',
+  type: 'seconds' | 'duration',
   value: number,
 }
 interface ITimerRange extends ITimer {
@@ -188,6 +265,9 @@ type TTimerUnion = ITimerSeconds | ITimerRange;
 const dateNow = shallowRef(new Date());
 const formList = ref<Record<ITimer['id'], TTimerUnion>>({});
 let intervalID: number;
+const audioLocalStorage = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY_AUDIO) || '{}');
+const selectedWarningAudio = shallowRef<keyof typeof audioMap>(audioLocalStorage?.warning ?? 'vetsalo_4');
+const selectedAlarmAudio = shallowRef<keyof typeof audioMap>(audioLocalStorage?.alarm ?? 'vetsalo_5_resolve');
 
 function addNewItem() {
   const id = Math.random();
@@ -201,10 +281,18 @@ function addNewItem() {
   };
 }
 
+function getDurationLeft(item: TTimerUnion, seconds: number) {
+  return dayjs.duration(dayjs(item.startedAt).add(seconds, 'seconds').diff(dateNow.value));
+}
+
 function timerValid(item: TTimerUnion) {
   let valid = !!item.displayName;
 
-  switch(item.type) {
+  const type = item.type;
+  // @ts-ignore
+  let exhaustiveCheck: never;
+  switch(type) {
+    case 'duration':
     case 'seconds': {
       valid = !!item.value;
       break;
@@ -215,6 +303,8 @@ function timerValid(item: TTimerUnion) {
       valid = item.valueMax > item.valueMin;
       break;
     }
+    default:
+      exhaustiveCheck = type;
   }
 
   return valid;
@@ -236,11 +326,53 @@ const items = shallowRef<MenuItem[]>([
 function toggleMenu(event: Event) {
   menu.value?.toggle(event);
 };
+function getStyle(item: TTimerUnion): CSSProperties {
+  let duration: Duration = dayjs.duration(0);
+  const type = item.type;
+  // @ts-ignore
+  let exhaustiveCheck: never;
+  switch(type) {
+    case 'duration':
+    case 'seconds':
+      duration = getDurationLeft(item, item.value);
+      break;
+    case 'range':
+      duration = getDurationLeft(item, item.valueMin);
+      break;
+    default:
+      exhaustiveCheck = type;
+  }
+  const secondsLeft = duration.asSeconds();
+  if (secondsLeft < 15) {
+    return Math.floor(secondsLeft) % 2 === 0
+      ? {
+        'background-color': 'red',
+        color: 'white',
+      }
+      : {
+        'background-color': 'white',
+      }
+  }
+  if (secondsLeft < 60) {
+    return {
+      'background-color': 'red',
+      color: 'white',
+    };
+  }
+  if (secondsLeft < 120) {
+    return {
+      'background-color': 'orange',
+    };
+  }
+  return {
+    'background-color': 'white',
+  }
+}
 
 onMounted(() => {
-  const localStorageItem = localStorage.getItem(LOCAL_STORAGE_KEY);
+  const localStorageItem = localStorage.getItem(LOCAL_STORAGE_KEY_TIMERS);
   formList.value = localStorageItem
-    ? JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '') as Record<ITimer['id'], TTimerUnion>
+    ? JSON.parse(localStorageItem) as Record<ITimer['id'], TTimerUnion>
     : {};
   intervalID = setInterval(() => {
     dateNow.value = new Date();
@@ -249,19 +381,38 @@ onMounted(() => {
         if (_item.finished || !_item.startedAt) {
           return;
         }
-        switch(_item.type) {
+        const type = _item.type;
+        // @ts-ignore
+        let exhaustiveCheck: never;
+        switch(type) {
+          case 'duration':
           case 'seconds': {
-            if (dayjs.duration(dayjs(_item.startedAt).add(_item.value, 'seconds').diff(dateNow.value)).asSeconds() <= 0) {
+            const seconds = getDurationLeft(_item, _item.value).asSeconds();
+            if (seconds < 15 && seconds > 14) {
+              audioMap[selectedWarningAudio.value].play();
+            }
+            if (seconds <= 0) {
+              audioMap[selectedAlarmAudio.value].play();
               _item.finished = true;
             }
             break;
           }
           case 'range': {
-            if (dayjs.duration(dayjs(_item.startedAt).add(_item.valueMax, 'seconds').diff(dateNow.value)).asSeconds() <= 0) {
+            const secondsMin = getDurationLeft(_item, _item.valueMin).asSeconds();
+            const secondsMax = getDurationLeft(_item, _item.valueMax).asSeconds();
+            if (secondsMin < 15 && secondsMin > 14) {
+              audioMap[selectedWarningAudio.value].play();
+            }
+            if (secondsMin <= 0) {
+              audioMap[selectedAlarmAudio.value].play();
+            }
+            if (secondsMax <= 0) {
               _item.finished = true;
             }
             break;
           }
+          default:
+            exhaustiveCheck = type;
         }
       })
   }, 500)
@@ -273,10 +424,26 @@ onBeforeMount(() => {
 watch(
   formList,
   () => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formList.value));
+    localStorage.setItem(LOCAL_STORAGE_KEY_TIMERS, JSON.stringify(formList.value));
   },
   {
     deep: true,
+  }
+)
+
+watch(
+  [
+    selectedWarningAudio,
+    selectedAlarmAudio,
+  ],
+  ([
+    warning,
+    alarm,
+  ]) => {
+    localStorage.setItem(LOCAL_STORAGE_KEY_AUDIO, JSON.stringify({
+      warning,
+      alarm
+    }));
   }
 )
 </script>

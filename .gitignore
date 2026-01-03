@@ -22,3 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+Microsoft.WebView2.FixedVersionRuntime.143.0.3650.96.x64
