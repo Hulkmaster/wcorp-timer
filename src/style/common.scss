@@ -1,0 +1,43 @@
+body,
+html {
+  width: 100dvw;
+  height: 100dvh;
+  background-color: transparent !important;
+  overflow: hidden;
+}
+
+:root {
+  --button-font-size: 1rem;
+  --button-padding: 0.25rem;
+}
+
+.w-button-icon {
+  cursor: pointer;
+  padding: var(--button-padding);
+  display: inline-flex;
+  border-radius: var(--p-form-field-border-radius);
+  outline-color: transparent;
+  font-size: var(--button-font-size);
+
+  color: var(--p-primary-contrast-color);
+  background: var(--p-primary-color);
+  border: 1px solid var(--p-primary-color);
+
+  &:not(:disabled):active {
+    background: var(--p-primary-hover-color);
+    border: 1px solid var(--p-primary-hover-color);
+    color: var(--p-primary-contrast-color);
+  }
+
+  &_danger {
+    background: var(--p-red-400);
+    border: 1px solid var(--p-red-400);
+    color: var(--p-red-950);
+
+    &:not(:disabled):hover {
+      background: var(--p-red-300);
+      border: 1px solid var(--p-red-300);
+      color: var(--p-red-950);
+    }
+  }
+}

@@ -15,9 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import PrmInputText, {
-  InputTextProps,
-} from 'primevue/inputtext';
+import PrmInputText, { type InputTextProps } from 'primevue/inputtext';
 
 const props = defineProps<{
   /**

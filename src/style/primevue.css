@@ -1,1 +1,5 @@
 @import 'primeicons/primeicons.css';
+
+.p-button.p-button-xs {
+  padding: 0.25rem
+}

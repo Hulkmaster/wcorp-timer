@@ -22,7 +22,7 @@ import {
   watch,
 } from 'vue';
 import InputMaskedNumber from './input-masked-number.vue';
-import { InputTextProps } from 'primevue/inputtext';
+import type { InputTextProps } from 'primevue/inputtext';
 
 type TDurationInSeconds = number;
 
@@ -62,9 +62,10 @@ function parseDurationString(durationString: string): number {
     seconds,
   ] = durationString.replace(/^-/, '').split(':');
   const sign = (durationString.charAt(0) === '-' ? -1 : 1);
-  const hoursValue = parseInt(hours, 10) * 3600;
-  const minutesValue = parseInt(minutes, 10) * 60;
-  const secondsValue = parseInt(seconds, 10);
+  // TODO not sure if should be exclamation mark
+  const hoursValue = parseInt(hours!, 10) * 3600;
+  const minutesValue = parseInt(minutes!, 10) * 60;
+  const secondsValue = parseInt(seconds!, 10);
   return sign * (hoursValue + minutesValue + secondsValue);
 }
 
