@@ -1,7 +1,18 @@
-# Tauri + Vue + TypeScript
+# Overlay with tools for ashes of cration
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+> Abandoned, because AoC had closed :c
 
-## Recommended IDE Setup
+> Current repo state unstable: mid-progress to electron/vite-plus migration, last stable release in releases
 
-- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Implemented tools
+
+- timers
+- iframe (for watching tv series or using interactive map)
+  - secure, non sharable via sockets
+
+## TODOs (abandoned)
+
+- migration to electron for intercepting and removing iframe headers
+- rooms (websockets)
+  - sync between players in the room
+- integration of our own interactive map app for guild members sharing
